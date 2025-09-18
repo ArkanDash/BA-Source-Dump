@@ -46,6 +46,9 @@ jobs:
 
       - name: Run Dumper
         run: python getJPVersion.py
+      
+      - name: Switch Branch
+        run: git checkout jp-dump
 
       - name: Configure Git LFS
         run: |

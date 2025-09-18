@@ -47,6 +47,9 @@ jobs:
       - name: Run Dumper
         run: python getGlobalVersion.py
 
+      - name: Switch Branch
+        run: git checkout global-dump
+
       - name: Configure Git LFS
         run: |
           git lfs install
@@ -55,7 +58,6 @@ jobs:
 
       - name: Commit and Push Update
         run: |
-          git checkout global-dump
           git add global_data/*
           git commit -m "Update Global Data"
           git push origin global-dump
