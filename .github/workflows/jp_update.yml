@@ -107,8 +107,8 @@ jobs:
         run: |
           commit_hash=$(git rev-parse HEAD)
           commit_url="https://github.com/${GITHUB_REPOSITORY}/commit/${commit_hash}"
-          prepath_raw_link = "https://github.com/${GITHUB_REPOSITORY}/raw/${commit_hash}/jp_data/"
-          treepath_link = "https://github.com/${GITHUB_REPOSITORY}/tree/${commit_hash}/jp_data/"
+          prepath_raw_link="https://github.com/${GITHUB_REPOSITORY}/raw/${commit_hash}/jp_data/"
+          treepath_link="https://github.com/${GITHUB_REPOSITORY}/tree/${commit_hash}/jp_data/"
 
           config_link="${prepath_raw_link}/config.json"
           metadata_link="${prepath_raw_link}/global-metadata.dat"
