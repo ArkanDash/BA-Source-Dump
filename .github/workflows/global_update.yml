@@ -52,9 +52,15 @@ jobs:
       - name: Run Dumper
         run: python getGlobalVersion.py
 
+      - name: Configure Git LFS
+        run: |
+          git lfs install
+          git lfs track "global_data/**"
+          git add .gitattributes
+
       - name: Commit and Push Update
         run: |
-          echo "Attempting to commit and push changes..."
+          git checkout global-dump
           git add global_data/*
           git commit -m "Update Global Data"
-          git push
+          git push origin global-dump

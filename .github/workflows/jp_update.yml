@@ -51,10 +51,16 @@ jobs:
 
       - name: Run Dumper
         run: python getJPVersion.py
+
+      - name: Configure Git LFS
+        run: |
+          git lfs install
+          git lfs track "jp_data/**"
+          git add .gitattributes
       
       - name: Commit and Push Update
         run: |
-          echo "Attempting to commit and push changes..."
+          git checkout jp-dump
           git add jp_data/*
           git commit -m "Update JP Data"
-          git push
+          git push origin jp-dump
