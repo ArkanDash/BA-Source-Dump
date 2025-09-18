@@ -23,10 +23,10 @@ jobs:
           fetch-depth: 0
           lfs: true
         
-      - name: Setup .NET 8.0 SDK
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '9.0.x'
 
       - name: Setup Python
         uses: actions/setup-python@v4
