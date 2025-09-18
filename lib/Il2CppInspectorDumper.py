@@ -56,7 +56,7 @@ class Il2CppInspectorDumperCLI:
             print("\nIl2CppInspectorRedux dumping process completed successfully.")
         except FileNotFoundError:
             print(f"Error: Il2CppInspectorRedux executable or one of the specified input files was not found.")
-            print(f"Please double-check paths: {self.executable_path}, {library_file}, {global_metadata}")
+            print(f"Please double-check paths: {self.executable_path}, {self.library_file}, {self.global_metadata}")
         except subprocess.CalledProcessError as e:
             print(f"\nError executing Il2CppInspectorRedux (returned non-zero exit code {e.returncode}):")
             if e.stdout:
