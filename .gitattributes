@@ -1,0 +1,5 @@
+global_data/cs/** filter=lfs diff=lfs merge=lfs -text
+global_data/dll/** filter=lfs diff=lfs merge=lfs -text
+global_data/ida_disassember/** filter=lfs diff=lfs merge=lfs -text
+global_data/*.dat filter=lfs diff=lfs merge=lfs -text
+global_data/*.so filter=lfs diff=lfs merge=lfs -text
