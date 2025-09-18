@@ -118,7 +118,8 @@ jobs:
           il2cpp_link="${prepath_raw_link}/libil2cpp.so"
           
           dump_data_link="${prepath_raw_link}/cs/il2cpp.cs"
-          fbs_data_link="${prepath_raw_link}/BlueArchive.fbs"
+          fbs_v1_data_link="${prepath_raw_link}/BlueArchiveV1.fbs"
+          fbs_v2_data_link="${prepath_raw_link}/BlueArchiveV2.fbs"
           dll_files="${treepath_link}/dll"
           disassembler_files="${treepath_link}/ida_disassember"
 
@@ -142,7 +143,8 @@ jobs:
           
           **Game Dumped Files**
           Dump Data: [dump.cs](${dump_data_link})
-          FBS Data: [BlueArchive.fbs](${fbs_data_link})
+          FBS V1 (DummyDll Dump): [BlueArchiveV1.fbs](${fbs_v1_data_link})
+          FBS V2 (Assembly Dump): [BlueArchiveV2.fbs](${fbs_v2_data_link})
           DummyDLL Files: [DummyDll Folder](${dll_files})
           Disassembler Files: [Disassembler Folder](${disassembler_files})
           EOF
