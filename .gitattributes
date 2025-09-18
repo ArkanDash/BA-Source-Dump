@@ -1,0 +1,5 @@
+jp_data/cs/** filter=lfs diff=lfs merge=lfs -text
+jp_data/dll/** filter=lfs diff=lfs merge=lfs -text
+jp_data/ida_disassember/** filter=lfs diff=lfs merge=lfs -text
+jp_data/*.dat filter=lfs diff=lfs merge=lfs -text
+jp_data/*.so filter=lfs diff=lfs merge=lfs -text
