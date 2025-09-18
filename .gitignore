@@ -3,5 +3,6 @@ __pycache__
 *_download
 *_dumped
 *_extracted
+*_data
 dump_lib
 apk_downloads
