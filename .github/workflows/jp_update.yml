@@ -1,11 +1,11 @@
 name: Dump JP Update
 
 on:
-  # schedule:
+  schedule:
     # Run every Tuesday at 03:00, 05:00, and 09:00 UTC
-    # - cron: '0 3,5,9 * * 2'
+    - cron: '0 3,5,9 * * 2'
     # Run everyday at 07:00 UTC
-    # - cron: '0 7 * * *'
+    - cron: '0 7 * * *'
   workflow_dispatch:
 
 permissions:
@@ -50,15 +50,122 @@ jobs:
       - name: Switch Branch
         run: git checkout jp-dump
 
+      - name: Check config.json changed
+        id: check_diff
+        shell: bash
+        run: |
+          config_file="jp_data/config.json"
+          changed_flag=false
+
+          if git ls-tree -r HEAD --name-only | grep -Fxq "$config_file"; then
+            if ! git diff --quiet HEAD -- "$config_file"; then
+              echo "$config_file is different, apply changes."
+              changed_flag=true
+            else
+              echo "$config_file is identical, no changes needed."
+              # changed_flag remains false
+            fi
+          else
+            echo "$config_file does not exist. Added the file."
+            changed_flag=true
+          fi
+
+          echo "changed=$changed_flag" >> $GITHUB_OUTPUT
+
       - name: Configure Git LFS
+        if: steps.check_diff.outputs.changed == 'true'
         run: |
           git lfs install
-          git lfs track "jp_data/**"
+          
+          git lfs track "jp_data/cs/**"
+          git lfs track "jp_data/dll/**"
+          git lfs track "jp_data/ida_disassember/**"
+          git lfs track "jp_data/*.dat"
+          git lfs track "jp_data/*.so"
+
           git add .gitattributes
       
       - name: Commit and Push Update
+        if: steps.check_diff.outputs.changed == 'true'
+        shell: bash
         run: |
-          git checkout jp-dump
+          raw_game_url=$(jq -r '.ServerInfoDataUrl' jp_data/config.json)
+          raw_catalog=$(jq -r '.ConnectionGroups[0].OverrideConnectionGroups | .[-1].AddressablesCatalogUrlRoot' jp_data/config.json)
+          
+          game_url=$(echo "$raw_game_url" | sed -n 's#.*/\([^/]*\)\.json#\1#p')
+          catalog=$(echo "$raw_catalog" | sed -n 's#.*/\([^/]*\)$#\1#p')
+          
+          commit_msg="${game_url}_${catalog}"
+          
           git add jp_data/*
-          git commit -m "Update JP Data"
+          git commit -m "$commit_msg"
           git push origin jp-dump
+      
+      - name: Send update to Discord
+        if: steps.check_diff.outputs.changed == 'true'
+        shell: bash
+        run: |
+          commit_hash=$(git rev-parse HEAD)
+          commit_url="https://github.com/${GITHUB_REPOSITORY}/commit/${commit_hash}"
+          prepath_raw_link = "https://github.com/${GITHUB_REPOSITORY}/raw/${commit_hash}/jp_data/"
+          treepath_link = "https://github.com/${GITHUB_REPOSITORY}/tree/${commit_hash}/jp_data/"
+
+          config_link="${prepath_raw_link}/config.json"
+          metadata_link="${prepath_raw_link}/global-metadata.dat"
+          il2cpp_link="${prepath_raw_link}/libil2cpp.so"
+
+          dump_data_link="${prepath_raw_link}/cs/il2cpp.cs"
+          fbs_data_link="${prepath_raw_link}/BlueArchive.fbs"
+          dll_files="${treepath_link}/dll"
+          disassembler_files="${treepath_link}/ida_disassember"
+
+          raw_game_url=$(jq -r '.ServerInfoDataUrl' jp_data/config.json)
+          game_url=$(echo "$raw_game_url" | sed -n 's#.*/\([^/]*\)\.json#\1#p')
+
+          catalog_version=$(jq -r '.ConnectionGroups[0].OverrideConnectionGroups | .[-1].Name' jp_data/config.json)
+          raw_catalog=$(jq -r '.ConnectionGroups[0].OverrideConnectionGroups | .[-1].AddressablesCatalogUrlRoot' jp_data/config.json)
+          catalog_id=$(echo "$raw_catalog" | sed -n 's#.*/\([^/]*\)$#\1#p')
+
+          embed_description=$(cat <<EOF
+          **Game Info**
+          Server Info Data Url: [${game_url}](${raw_game_url})
+          Catalog Version: ${catalog_version}
+          Catalog Url: ${catalog_id}
+
+          **Game Data**
+          Config Data: [config.json](${config_link})
+          Metadata: [global-metadata.dat](${metadata_link})
+          Il2cpp: [libil2cpp.so](${il2cpp_link})
+
+          **Game Dumped Files**
+          Dump Data: [dump.cs](${dump_data_link})
+          FBS Data: [BlueArchive.fbs](${fbs_data_link})
+          DummyDLL Files: [DummyDll Folder](${dll_files})
+          Disassembler Files: [Disassembler Folder](${disassembler_files})
+          EOF
+          )
+
+          timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          payload=$(jq -n \
+            --arg title "JP Config Update" \
+            --arg description "$embed_description" \
+            --arg url "$commit_url" \
+            --arg timestamp "$timestamp" \
+            '{
+              "embeds": [
+                {
+                  "title": $title,
+                  "description": $description,
+                  "url": $url,
+                  "color": 255,
+                  "timestamp": $timestamp
+                }
+              ]
+            }')
+
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "$payload" \
+               "${{ secrets.DISCORD_WEBHOOK_URL }}"
+          echo "Discord notification sent."
