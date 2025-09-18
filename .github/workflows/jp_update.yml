@@ -1,21 +1,18 @@
-name: JP Update
+name: Dump JP Update
 
 on:
-  schedule:
-    # Run every Wednesday at 03:00, 05:00, 07:00, 09:00 UTC
-    - cron: '0 3 * * 3'
-    - cron: '0 5 * * 3'
-    - cron: '0 7 * * 3'
-    - cron: '0 9 * * 3'
-    # Run everyday at 07:00
-    - cron: '0 7 * * *'
+  # schedule:
+    # Run every Tuesday at 03:00, 05:00, and 09:00 UTC
+    # - cron: '0 3,5,9 * * 2'
+    # Run everyday at 07:00 UTC
+    # - cron: '0 7 * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  update-game-url:
+  dump-jp-update:
     environment: "GitHub Action"
     runs-on: ubuntu-latest
 
@@ -24,139 +21,40 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Setup .NET 9.0 SDK
+          lfs: true
+        
+      - name: Setup .NET 8.0 SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '8.0.x'
 
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.13.x'
 
       - name: Install Dependencies
-        run: |
-          if [ -f requirements.txt ]; then
-            pip install -r requirements.txt
-          else
-            echo "No requirements.txt found, skipping dependency installation."
-          fi
+        run: pip install -r requirements.txt
 
       - name: Get APK & Dumper
-        run: python getApkData.py
+        run: python getApkData.py --region jp
 
       - name: Set executable permissions for dumper
         run: |
           chmod +x ./dump_lib/Il2CppInspector/Il2CppInspector
           chmod +x ./dump_lib/FbsDumper/FbsDumper
+      
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
 
       - name: Run Dumper
         run: python getJPVersion.py
-
-      - name: Check if config.json changed
-        id: check_diff
-        run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
-          
-          config_file="jp_data/config.json"
-          changed_flag=false
-
-          if git ls-tree -r origin/main --name-only | grep -Fxq "$config_file"; then
-            echo "$config_file exists locally. Checking for differences against origin/main..."
-            if ! git diff --quiet origin/main -- "$config_file"; then
-              echo "Changes detected in $config_file compared to origin/main (or file is new)."
-              changed_flag=true
-            else
-              echo "$config_file exists locally but is identical to origin/main. No git changes needed."
-              # changed_flag remains false
-            fi
-          else
-            echo "$config_file does not exist on origin/main. Add the file."
-            changed_flag=true
-          fi
-
-          echo "changed=$changed_flag" >> $GITHUB_OUTPUT
-
-      - name: Commit and Push Config Update
-        if: steps.check_diff.outputs.changed == 'true'
+      
+      - name: Commit and Push Update
         run: |
           echo "Attempting to commit and push changes..."
-          # Extract data for commit message using jq and sed
-          raw_game_url=$(jq -r '.ServerInfoDataUrl' jp_data/config.json)
-          raw_catalog=$(jq -r '.ConnectionGroups[0].OverrideConnectionGroups | .[-1].AddressablesCatalogUrlRoot' jp_data/config.json)
-
-          # Extract the part between the last "/" and ".json"
-          game_url=$(echo "$raw_game_url" | sed -n 's#.*/\([^/]*\)\.json#\1#p')
-          # Extract the part after the last "/"
-          catalog=$(echo "$raw_catalog" | sed -n 's#.*/\([^/]*\)$#\1#p')
-
-          # Construct commit message
-          commit_msg="${game_url}_${catalog}"
-          echo "Commit message: $commit_msg"
-
-          # Add the files that should be committed
           git add jp_data/*
-
-          # Commit the changes
-          git commit -m "$commit_msg"
-
-          # Push the commit to the main branch
-          git push origin HEAD:main
-          echo "Changes pushed successfully."
-
-      - name: Send update to Discord
-        if: steps.check_diff.outputs.changed == 'true'
-        run: |
-          commit_hash=$(git rev-parse HEAD)
-          commit_url="https://github.com/${GITHUB_REPOSITORY}/commit/${commit_hash}"
-
-          dump_data_link="https://github.com/${GITHUB_REPOSITORY}/raw/${commit_hash}/jp_data/dump.cs"
-          fbs_data_link="https://github.com/${GITHUB_REPOSITORY}/raw/${commit_hash}/jp_data/BlueArchive.fbs"
-          config_link="https://github.com/${GITHUB_REPOSITORY}/raw/${commit_hash}/jp_data/config.json"
-
-          raw_game_url=$(jq -r '.ServerInfoDataUrl' jp_data/config.json)
-          game_url=$(echo "$raw_game_url" | sed -n 's#.*/\([^/]*\)\.json#\1#p')
-
-          catalog_version=$(jq -r '.ConnectionGroups[0].OverrideConnectionGroups | .[-1].Name' jp_data/config.json)
-          raw_catalog=$(jq -r '.ConnectionGroups[0].OverrideConnectionGroups | .[-1].AddressablesCatalogUrlRoot' jp_data/config.json)
-          catalog_id=$(echo "$raw_catalog" | sed -n 's#.*/\([^/]*\)$#\1#p')
-
-          embed_description=$(cat <<EOF
-          **Game Info**
-          Server Info Data Url: [${game_url}](${raw_game_url})
-          Catalog Version: ${catalog_version}
-          Catalog Url: ${catalog_id}
-
-          **Game Data**
-          Dump Data: [dump.cs](${dump_data_link})
-          FBS Data: [BlueArchive.fbs](${fbs_data_link})
-          Config Data: [config.json](${config_link})
-          EOF
-          )
-
-          timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-          payload=$(jq -n \
-            --arg title "JP Config Update" \
-            --arg description "$embed_description" \
-            --arg url "$commit_url" \
-            --arg timestamp "$timestamp" \
-            '{
-              "embeds": [
-                {
-                  "title": $title,
-                  "description": $description,
-                  "url": $url,
-                  "color": 255,
-                  "timestamp": $timestamp
-                }
-              ]
-            }')
-
-          curl -H "Content-Type: application/json" \
-               -X POST \
-               -d "$payload" \
-               "${{ secrets.DISCORD_WEBHOOK_URL }}"
-          echo "Discord notification sent."
+          git commit -m "Update JP Data"
+          git push

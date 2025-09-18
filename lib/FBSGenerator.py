@@ -2,6 +2,7 @@ import re
 from pathlib import Path
 import keyword
 
+# Old fbs generator
 class FBSGenerator:
     def __init__(self, dump_cs_filepath: Path, fbs_filepath: Path) -> None:
         self.dump_cs_filepath = dump_cs_filepath
